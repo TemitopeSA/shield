@@ -18,8 +18,8 @@ export function useReveal(evaluation: Evaluation | null | undefined, step = 280)
     if (!evaluation) return;
     const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     if (reduce) {
-      const id = requestAnimationFrame(() => setCount(total));
-      return () => cancelAnimationFrame(id);
+      const id = setTimeout(() => setCount(total), 0);
+      return () => clearTimeout(id);
     }
     if (count >= total) return;
     const t = setTimeout(() => setCount((c) => c + 1), count === 0 ? 180 : step);

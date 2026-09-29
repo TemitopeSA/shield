@@ -165,8 +165,13 @@ export function Progress({ value, max = 100, tone = "ink", className, marker }: 
   const pct = Math.max(0, Math.min(100, (value / max) * 100));
   const [w, setW] = useState(0);
   useEffect(() => {
+    // rAF for the animated entrance; the timeout guarantees the final width if frames are paused (hidden tab).
     const id = requestAnimationFrame(() => setW(pct));
-    return () => cancelAnimationFrame(id);
+    const t = setTimeout(() => setW(pct), 120);
+    return () => {
+      cancelAnimationFrame(id);
+      clearTimeout(t);
+    };
   }, [pct]);
   const fill = { ink: "bg-ink", success: "bg-success", danger: "bg-danger", warn: "bg-[#d98a00]", brand: "bg-brand-strong" }[tone];
   return (
@@ -413,8 +418,8 @@ export function useCountUp(target: number, duration = 700) {
     const reduce = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     if (reduce || a === target) {
       from.current = target;
-      raf = requestAnimationFrame(() => setV(target));
-      return () => cancelAnimationFrame(raf);
+      const t = setTimeout(() => setV(target), 0);
+      return () => clearTimeout(t);
     }
     const step = (t: number) => {
       const p = Math.min(1, (t - start) / duration);
@@ -424,7 +429,15 @@ export function useCountUp(target: number, duration = 700) {
       else from.current = target;
     };
     raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
+    // Browsers pause rAF in hidden tabs; never leave a stale number on screen.
+    const settle = setTimeout(() => {
+      from.current = target;
+      setV(target);
+    }, duration + 80);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(settle);
+    };
   }, [target, duration]);
   return v;
 }
