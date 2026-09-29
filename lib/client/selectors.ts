@@ -34,8 +34,9 @@ export function accountRows(state: ShieldState, partner = "all", wrapper?: strin
       const pack = getPack(state, a.wrapper)!;
       const lim = contributionLimits(pack);
       const client = state.clients.find((c) => c.id === a.client_id)!;
-      const limit = lim.lifetime ?? lim.annual;
-      const used = lim.lifetime !== null ? v.deposits_lifetime : v.deposits_year;
+      const b = bindingLimit(lim, v);
+      const limit = b?.limit ?? null;
+      const used = b?.used ?? v.deposits_lifetime;
       const headrooms = [lim.lifetime !== null ? lim.lifetime - v.deposits_lifetime : null, lim.annual !== null ? lim.annual - v.deposits_year : null].filter((x): x is number => x !== null);
       const compliance = evaluate("compliance", { pack, now, instruments: im, account: a, client }, "c");
       const last = [...a.transactions].sort((x, y) => y.date.localeCompare(x.date))[0]?.date ?? a.opened_at;
@@ -58,6 +59,17 @@ export function accountRows(state: ShieldState, partner = "all", wrapper?: strin
       };
     })
     .sort((a, b) => b.lastActivity.localeCompare(a.lastActivity));
+}
+
+/** The contribution cap that binds first (smallest headroom), e.g. PIR's annual cap. */
+export function bindingLimit(lim: { lifetime: number | null; annual: number | null }, v: { deposits_lifetime: number; deposits_year: number }) {
+  const opts = [
+    lim.lifetime !== null ? { period: "lifetime" as const, limit: lim.lifetime, used: v.deposits_lifetime } : null,
+    lim.annual !== null ? { period: "this year" as const, limit: lim.annual, used: v.deposits_year } : null,
+  ].filter((x): x is NonNullable<typeof x> => !!x);
+  if (!opts.length) return null;
+  const sorted = opts.sort((a, b) => a.limit - a.used - (b.limit - b.used));
+  return { ...sorted[0], other: sorted[1] ?? null };
 }
 
 export function accountDetail(state: ShieldState, id: string) {

@@ -11,6 +11,11 @@ import { Badge, Card, Drawer, JsonView, PageHeader, Segmented, WrapperBadge, cx 
 const STAGE_LABEL: Record<string, string> = { account_opening: "Account opening", pre_trade: "Pre-trade", pre_transfer: "Deposit", pre_withdrawal: "Withdrawal", compliance: "Monitoring" };
 
 export default function RulesPage() {
+  const params = useSearchParams();
+  return <Rules key={params.toString()} />;
+}
+
+function Rules() {
   const { state } = useShield();
   const params = useSearchParams();
   const [wrapper, setWrapper] = useState(params.get("wrapper") ?? "all");

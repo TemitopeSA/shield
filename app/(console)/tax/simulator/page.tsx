@@ -9,6 +9,10 @@ import { WithdrawalSimulator } from "@/components/tax/WithdrawalSimulator";
 import { IskCalculation } from "@/components/tax/IskCalculation";
 
 export default function SimulatorPage() {
+  return <Simulator key={useSearchParams().get("tab") ?? ""} />;
+}
+
+function Simulator() {
   const { state } = useShield();
   const params = useSearchParams();
   const [tab, setTab] = useState<"withdrawal" | "isk">(params.get("tab") === "isk" ? "isk" : "withdrawal");

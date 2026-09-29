@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import { ShieldProvider } from "@/lib/client/store";
 import "./globals.css";
 
@@ -16,6 +17,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en" className={`${inter.variable} ${mono.variable} h-full antialiased`}>
       <body className="min-h-full">
         <ShieldProvider>{children}</ShieldProvider>
+        {/* Vercel Web Analytics — only on Vercel production deployments. */}
+        {process.env.NEXT_PUBLIC_VERCEL_ENV === "production" && <Analytics />}
       </body>
     </html>
   );

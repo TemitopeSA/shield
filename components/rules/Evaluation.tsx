@@ -96,7 +96,7 @@ function DetailGrid({ details, currency }: { details: Record<string, unknown>; c
   else if ("tax_residency" in details) items = [["Tax residency", String(details.tax_residency)], ["Client age", String(details.age)]];
   if (!items.length) return null;
   return (
-    <div className="grid grid-cols-3 gap-px bg-border rounded-lg overflow-hidden border border-border">
+    <div className="grid gap-px bg-border rounded-lg overflow-hidden border border-border" style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}>
       {items.map(([k, v, tone]) => (
         <div key={k} className="bg-surface px-3 py-2.5">
           <div className="text-[11px] text-muted">{k}</div>

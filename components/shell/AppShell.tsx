@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { useShield } from "@/lib/client/store";
 import { activePacks, accountRows } from "@/lib/client/selectors";
-import { Badge, Button, Kbd, cx, wrapperColor } from "@/components/ui";
+import { Badge, Kbd, cx, wrapperColor, LinkButton } from "@/components/ui";
 import { fmtDate } from "@/lib/dates";
 import { Logo } from "./Logo";
 
@@ -81,11 +81,27 @@ function useNav(): { title?: string; items: NavItem[] }[] {
   ];
 }
 
-function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
+// Query params (e.g. ?wrapper=PEA) only refine which item is highlighted, so they are read
+// inside a small Suspense boundary and the rest of the shell can be server-rendered.
+function Sidebar(props: { onNavigate?: () => void }) {
+  return (
+    <Suspense fallback={<SidebarNav {...props} search={EMPTY} />}>
+      <SidebarWithSearch {...props} />
+    </Suspense>
+  );
+}
+
+const EMPTY = new URLSearchParams();
+
+function SidebarWithSearch(props: { onNavigate?: () => void }) {
+  const search = useSearchParams();
+  return <SidebarNav {...props} search={search} />;
+}
+
+function SidebarNav({ onNavigate, search }: { onNavigate?: () => void; search: URLSearchParams }) {
   const nav = useNav();
   const path = usePathname();
-  const search = useSearchParams();
-  const isActive = (i: NavItem) => (i.match ? i.match(path, search) : path === i.href || path.startsWith(i.href + "/"));
+  const isActive = (i: NavItem) => (i.match ? i.match(path, search as URLSearchParams) : path === i.href || path.startsWith(i.href + "/"));
   return (
     <nav className="flex flex-col h-full" aria-label="Main">
       <div className="h-14 flex items-center gap-2.5 px-4 shrink-0">
@@ -145,7 +161,7 @@ function PartnerSwitcher() {
   const current = state?.partners.find((p) => p.id === partner);
   return (
     <div className="relative" ref={ref}>
-      <button onClick={() => setOpen((o) => !o)} aria-haspopup="listbox" aria-expanded={open} className="flex items-center gap-2 h-8 pl-1.5 pr-2.5 rounded-lg border border-border bg-surface hover:border-border-strong text-[13px] font-medium">
+      <button onClick={() => setOpen((o) => !o)} aria-haspopup="listbox" aria-expanded={open} aria-label={`Partner: ${current?.name ?? "All partners"}`} className="flex items-center gap-2 h-8 pl-1.5 pr-2.5 rounded-lg border border-border bg-surface hover:border-border-strong text-[13px] font-medium">
         <span className={cx("size-5 rounded-md flex items-center justify-center text-[10px] font-bold", current ? "bg-ink text-white" : "bg-sunken text-fg-2")}>{current ? current.name[0] : "∗"}</span>
         <span className="max-w-[88px] sm:max-w-[140px] truncate">{current?.name ?? "All partners"}</span>
         <ChevronDown className="size-3.5 text-muted" />
@@ -418,17 +434,17 @@ function ShellInner({ children }: { children: ReactNode }) {
             </button>
             <div className="md:ml-auto flex items-center gap-1 sm:gap-1.5 shrink-0">
               {path !== "/demo" && (
-                <Link href="/demo">
-                  <Button variant="primary" size="sm" icon={<PlayCircle className="size-3.5 text-brand" />}>
+                <LinkButton href="/demo" variant="primary" size="sm" icon={<PlayCircle className="size-3.5 text-brand" />}>
                     <span className="hidden sm:inline">Demo mode</span>
-                  </Button>
-                </Link>
+                  </LinkButton>
               )}
               <Notifications />
               <Profile />
             </div>
           </header>
-          <main className="flex-1 min-w-0">{children}</main>
+          <main className="flex-1 min-w-0">
+            <Suspense fallback={<div className="p-8"><div className="h-8 w-60 rounded-md bg-sunken animate-pulse" /></div>}>{children}</Suspense>
+          </main>
         </div>
       </div>
       <CommandPalette open={palette} onClose={() => setPalette(false)} />
@@ -438,9 +454,5 @@ function ShellInner({ children }: { children: ReactNode }) {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
-  return (
-    <Suspense>
-      <ShellInner>{children}</ShellInner>
-    </Suspense>
-  );
+  return <ShellInner>{children}</ShellInner>;
 }

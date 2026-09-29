@@ -18,6 +18,26 @@ export interface ApiCall {
 
 let counter = 0;
 
+// The browser's copy of its sandbox is authoritative for this reviewer. Every request
+// carries its version; a server instance holding a different version answers 409 and
+// is re-hydrated from this copy (or, if it is ahead, hands back its newer state).
+let current: ShieldState | null = null;
+let listener: ((s: ShieldState) => void) | null = null;
+
+export function onStateChange(fn: (s: ShieldState) => void) {
+  listener = fn;
+}
+
+function adopt(s: ShieldState) {
+  current = s;
+  try {
+    localStorage.setItem(SNAP_KEY, JSON.stringify(s));
+  } catch {
+    /* storage unavailable or full — the in-memory copy still works */
+  }
+  listener?.(s);
+}
+
 export function sessionId(): string {
   try {
     let sid = localStorage.getItem(SID_KEY);
@@ -31,48 +51,49 @@ export function sessionId(): string {
   }
 }
 
-export function saveSnapshot(state: ShieldState) {
-  try {
-    localStorage.setItem(SNAP_KEY, JSON.stringify(state));
-  } catch {
-    /* storage unavailable or full — the server copy still works */
-  }
-}
-
-function loadSnapshot(): ShieldState | undefined {
+function loadSnapshot(): ShieldState | null {
   try {
     const raw = localStorage.getItem(SNAP_KEY);
-    return raw ? (JSON.parse(raw) as ShieldState) : undefined;
+    return raw ? (JSON.parse(raw) as ShieldState) : null;
   } catch {
-    return undefined;
+    return null;
   }
 }
 
-async function restore(): Promise<ShieldState> {
+const versionOf = (s: ShieldState) => `${s.seeded_at}:${s.seq}`;
+
+function headers(): Record<string, string> {
+  current ??= loadSnapshot();
+  return {
+    "content-type": "application/json",
+    "x-shield-session": sessionId(),
+    "x-shield-soft-errors": "1",
+    "x-shield-include-state": "1",
+    ...(current ? { "x-shield-version": versionOf(current) } : {}),
+  };
+}
+
+async function restore() {
+  current ??= loadSnapshot();
   const res = await fetch("/api/session", {
     method: "POST",
     headers: { "content-type": "application/json", "x-shield-session": sessionId() },
-    body: JSON.stringify({ snapshot: loadSnapshot() }),
+    body: JSON.stringify({ snapshot: current }),
   });
-  return (await res.json()).state as ShieldState;
+  adopt((await res.json()).state as ShieldState);
 }
 
 /** Real HTTP status, even when the server softened it for the console UI. */
 export const statusOf = (res: Response) => Number(res.headers.get("x-shield-status") ?? res.status);
 
 async function raw(method: string, path: string, body?: unknown): Promise<Response> {
-  const init: RequestInit = {
-    method,
-    headers: { "content-type": "application/json", "x-shield-session": sessionId(), "x-shield-soft-errors": "1" },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  };
-  let res = await fetch(path, init);
-  if (statusOf(res) === 409) {
+  const send = () => fetch(path, { method, headers: headers(), body: body === undefined ? undefined : JSON.stringify(body) });
+  let res = await send();
+  for (let attempt = 0; attempt < 2 && statusOf(res) === 409; attempt++) {
     const j = await res.clone().json().catch(() => ({}));
-    if (j.code === "SESSION_RESTORE_REQUIRED") {
-      await restore();
-      res = await fetch(path, init);
-    }
+    if (j.code !== "SESSION_RESTORE_REQUIRED") break;
+    await restore();
+    res = await send();
   }
   return res;
 }
@@ -81,21 +102,31 @@ export async function apiRequest(method: string, path: string, body?: unknown): 
   const t0 = performance.now();
   const res = await raw(method, path, body);
   const type = res.headers.get("content-type") ?? "";
-  const data = type.includes("json") ? await res.json() : await res.text();
+  let data: unknown = type.includes("json") ? await res.json() : await res.text();
+  if (data && typeof data === "object" && "_state" in data) {
+    const { _state, ...rest } = data as { _state: ShieldState };
+    adopt(_state);
+    data = rest;
+  }
   const status = statusOf(res);
   return { id: ++counter, method, path, body, status, ok: status < 400, data, ms: Math.round(performance.now() - t0), at: new Date().toISOString() };
 }
 
 export async function fetchState(): Promise<ShieldState> {
   const res = await raw("GET", "/api/session");
-  return (await res.json()) as ShieldState;
+  const s = (await res.json()) as ShieldState;
+  adopt(s);
+  return s;
 }
 
 export async function resetState(): Promise<ShieldState> {
-  const res = await raw("POST", "/api/session/reset");
-  return (await res.json()) as ShieldState;
+  const res = await fetch("/api/session/reset", { method: "POST", headers: { "x-shield-session": sessionId() } });
+  const s = (await res.json()) as ShieldState;
+  adopt(s);
+  return s;
 }
 
+/** Downloads go through the API too (report generation is audited), then resync. */
 export async function downloadFile(path: string, filename: string) {
   const res = await raw("GET", path);
   const blob = await res.blob();
@@ -105,4 +136,5 @@ export async function downloadFile(path: string, filename: string) {
   a.download = filename;
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+  await fetchState().catch(() => undefined);
 }

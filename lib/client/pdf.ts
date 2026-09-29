@@ -1,10 +1,9 @@
-"use client";
 import type { ReportData } from "../reports";
 import { fmtMoney } from "../money";
 import { fmtDate } from "../dates";
 
-/** Render a report to PDF in the browser (jsPDF + autotable). */
-export async function downloadReportPdf(r: ReportData) {
+/** Render a report to a PDF document (jsPDF + autotable). */
+export async function buildReportPdf(r: ReportData) {
   const { jsPDF } = await import("jspdf");
   const autoTable = (await import("jspdf-autotable")).default;
   const doc = new jsPDF({ unit: "pt", format: "a4" });
@@ -74,5 +73,10 @@ export async function downloadReportPdf(r: ReportData) {
     doc.text(`Shield · EU Wrapper Engine prototype — ${r.disclaimer}`, 40, doc.internal.pageSize.getHeight() - 24);
     doc.text(`${i} / ${pages}`, W - 60, doc.internal.pageSize.getHeight() - 24);
   }
+  return doc;
+}
+
+export async function downloadReportPdf(r: ReportData) {
+  const doc = await buildReportPdf(r);
   doc.save(`${r.account.id}-${r.year}-${r.format}.pdf`);
 }

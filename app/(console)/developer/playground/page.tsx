@@ -25,7 +25,7 @@ const ENDPOINTS: Endpoint[] = [
   { id: "wrapper", group: "Wrapper", method: "GET", path: "/v1/accounts/{id}/wrapper", summary: "Wrapper status: headroom, holding period, compliance, estimated tax." },
   { id: "lots", group: "Tax Lots", method: "GET", path: "/v1/accounts/{id}/tax_lots", summary: "Open tax lots with cost basis and unrealised gains." },
   { id: "report", group: "Reports", method: "GET", path: "/v1/accounts/{id}/reports/{year}", summary: "Annual tax report in the wrapper's local format (IFU · KU · PIR)." },
-  { id: "simulate", group: "Simulation", method: "POST", path: "/v1/wrappers/simulate", summary: "Dry run any action. Never modifies state.", body: (a) => ({ action: "withdrawal", account_id: a, amount: 20000, date: "2031-01-15", assumed_return: 0.05 }) },
+  { id: "simulate", group: "Simulation", method: "POST", path: "/v1/wrappers/simulate", summary: "Dry run any action. Never modifies state.", body: (a) => ({ action: "withdrawal", account_id: a, amount: 5000, date: "2031-01-15", assumed_return: 0.05 }) },
   { id: "packs", group: "Simulation", method: "GET", path: "/v1/wrappers", summary: "Rule packs registered with the engine." },
 ];
 

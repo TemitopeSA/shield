@@ -1,7 +1,7 @@
 "use client";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { ShieldState } from "../types";
-import { apiRequest, fetchState, resetState, saveSnapshot, type ApiCall } from "./api";
+import { apiRequest, fetchState, onStateChange, resetState, type ApiCall } from "./api";
 
 interface Toast {
   id: number;
@@ -33,18 +33,15 @@ export function ShieldProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const toastId = useRef(0);
 
-  const apply = useCallback((s: ShieldState) => {
-    setState(s);
-    saveSnapshot(s);
-  }, []);
-
   const refresh = useCallback(async () => {
-    apply(await fetchState());
-  }, [apply]);
+    await fetchState();
+  }, []);
 
   useEffect(() => {
     let alive = true;
-    fetchState().then((s) => alive && apply(s));
+    // Every response that carries sandbox state flows through here.
+    onStateChange((s) => alive && setState(s));
+    fetchState().catch(() => undefined);
     try {
       const p = localStorage.getItem("shield.partner");
       if (p) queueMicrotask(() => setPartnerState(p));
@@ -52,7 +49,7 @@ export function ShieldProvider({ children }: { children: ReactNode }) {
     return () => {
       alive = false;
     };
-  }, [apply]);
+  }, []);
 
   const setPartner = useCallback((p: string) => {
     setPartnerState(p);
@@ -63,22 +60,19 @@ export function ShieldProvider({ children }: { children: ReactNode }) {
 
   const call = useCallback(
     async (method: string, path: string, body?: unknown) => {
+      // The response carries the resulting sandbox state, so no second round-trip is needed.
       const c = await apiRequest(method, path, body);
       setCalls((xs) => [c, ...xs].slice(0, 30));
-      // Any API call may write audit events (rejections, reports), so resync the sandbox.
-      const readOnly = /\/(simulate|validate)$/.test(path);
-      if ((method !== "GET" && !readOnly) || path.includes("/reports/")) await refresh();
       return c;
     },
-    [refresh],
+    [],
   );
 
   const reset = useCallback(async () => {
     const s = await resetState();
-    apply(s);
     setCalls([]);
     return s;
-  }, [apply]);
+  }, []);
 
   const toast = useCallback((t: Omit<Toast, "id">) => {
     const id = ++toastId.current;

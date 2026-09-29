@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { ArrowUpRight, CalendarClock, Code2, PlayCircle } from "lucide-react";
 import { useShield } from "@/lib/client/store";
 import { accountRows, activePacks, evaluationStats, partnerFilter } from "@/lib/client/selectors";
-import { Badge, Button, Card, CardHeader, CountUp, PageHeader, Progress, Skeleton, WrapperBadge, cx, wrapperColor } from "@/components/ui";
+import { Badge, Card, CardHeader, CountUp, PageHeader, Progress, Skeleton, WrapperBadge, cx, wrapperColor, LinkButton } from "@/components/ui";
 import { EvaluationsChart, RejectionsChart } from "@/components/charts";
 import { fmtMoney } from "@/lib/money";
 import { addYears, fmtDate, fmtDateTime } from "@/lib/dates";
@@ -66,8 +66,8 @@ export default function Dashboard() {
         description={partnerName ? `Wrapper activity for ${partnerName}.` : "Wrapper accounts, rule evaluations and upcoming tax events across all partners."}
         actions={
           <>
-            <Link href="/developer/playground"><Button icon={<Code2 className="size-3.5" />}>API Playground</Button></Link>
-            <Link href="/demo"><Button variant="primary" icon={<PlayCircle className="size-3.5 text-brand" />}>Guided demo</Button></Link>
+            <LinkButton href="/developer/playground" icon={<Code2 className="size-3.5" />}>API Playground</LinkButton>
+            <LinkButton href="/demo" variant="primary" icon={<PlayCircle className="size-3.5 text-brand" />}>Guided demo</LinkButton>
           </>
         }
       />

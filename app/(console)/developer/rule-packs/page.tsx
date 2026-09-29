@@ -1,12 +1,11 @@
 "use client";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Check, FileJson, Plus, Upload, Zap } from "lucide-react";
 import { useShield } from "@/lib/client/store";
 import { allPacks } from "@/lib/client/selectors";
 import { packFile } from "@/lib/engine/packs";
-import { Badge, Button, Card, CopyButton, CountryChip, JsonView, Modal, PageHeader, WrapperBadge, cx } from "@/components/ui";
+import { Badge, Button, Card, CopyButton, CountryChip, JsonView, LinkButton, Modal, PageHeader, WrapperBadge, cx } from "@/components/ui";
 
 interface Summary { wrapper: string; name: string; country: string; country_name: string; currency: string; rules: number; stages: string[]; kinds: string[]; tax_model: string }
 
@@ -156,7 +155,7 @@ function AddWrapperDialog({ open, onClose, initial, onActivated }: { open: boole
             <Button variant="ghost" onClick={() => { setSource(null); setCheck(null); setDone(null); }}>Back</Button>
             {done ? (
               <div className="flex gap-2">
-                <Link href={`/accounts?wrapper=${done.wrapper}`} onClick={close}><Button variant="primary">Open {done.name} accounts</Button></Link>
+                <LinkButton href={`/accounts?wrapper=${done.wrapper}`} onClick={close} variant="primary">Open {done.name} accounts</LinkButton>
               </div>
             ) : (
               <Button variant="primary" icon={<Zap className="size-3.5" />} disabled={!check?.valid} loading={busy === "activate"} onClick={activate}>Activate wrapper</Button>

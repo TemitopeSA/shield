@@ -1,6 +1,5 @@
 "use client";
 import { useMemo, useState, type ReactNode } from "react";
-import Link from "next/link";
 import { ArrowRight, Check, Code2, FileText, Layers, RotateCcw, Sparkles } from "lucide-react";
 import { useShield } from "@/lib/client/store";
 import { accountDetail } from "@/lib/client/selectors";
@@ -24,8 +23,7 @@ import {
   Tabs,
   WrapperBadge,
   cx,
-  wrapperColor,
-} from "@/components/ui";
+  wrapperColor, LinkButton } from "@/components/ui";
 import { DecisionCard, FlowDiagram, RuleChecklist, SuccessCard, type FlowPhase } from "@/components/rules/Evaluation";
 import { WithdrawalSimulator } from "@/components/tax/WithdrawalSimulator";
 import { IskCalculation } from "@/components/tax/IskCalculation";
@@ -708,15 +706,9 @@ export function StepFinale({ done }: { done: Set<DoneKey> }) {
           <p className="text-[13.5px] text-[#bdbcb6] mt-1.5">Try it: activate Poland&apos;s IKE from <span className="font-mono text-brand">ike.json</span> — no engine changes.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link href="/developer/rule-packs?add=ike">
-            <Button variant="brand" size="lg" icon={<Layers className="size-4" />}>Add a wrapper</Button>
-          </Link>
-          <Link href="/developer/playground">
-            <Button size="lg" className="bg-transparent! text-white! border-white/25! hover:bg-white/10!" icon={<Code2 className="size-4" />}>API Playground</Button>
-          </Link>
-          <Link href="/dashboard">
-            <Button size="lg" className="bg-transparent! text-white! border-white/25! hover:bg-white/10!">Open console</Button>
-          </Link>
+          <LinkButton href="/developer/rule-packs?add=ike" variant="brand" size="lg" icon={<Layers className="size-4" />}>Add a wrapper</LinkButton>
+          <LinkButton href="/developer/playground" size="lg" className="bg-transparent! text-white! border-white/25! hover:bg-white/10!" icon={<Code2 className="size-4" />}>API Playground</LinkButton>
+          <LinkButton href="/dashboard" size="lg" className="bg-transparent! text-white! border-white/25! hover:bg-white/10!">Open console</LinkButton>
         </div>
       </div>
       <DemoNote>Tax rules are simplified for demonstration and are not tax advice.</DemoNote>

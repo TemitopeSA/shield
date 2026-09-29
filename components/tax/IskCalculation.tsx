@@ -5,7 +5,7 @@ import { useShield } from "@/lib/client/store";
 import type { CapitalBaseResult, TaxEstimate } from "@/lib/tax";
 import { fmtMoney, convert } from "@/lib/money";
 import { fmtDate } from "@/lib/dates";
-import { Button, CountUp, DemoNote, Skeleton, cx } from "@/components/ui";
+import { CountUp, DemoNote, Skeleton, cx } from "@/components/ui";
 
 /** Transparent ISK working: quarterly snapshots → capital base → allowance → rate → tax. */
 export function IskCalculation({ accountId, defaultOpen = false }: { accountId: string; defaultOpen?: boolean }) {
@@ -111,7 +111,3 @@ const Line = ({ label, value, bold, highlight }: { label: string; value: string;
 );
 const Divider = () => <div className="border-t border-border my-1.5" />;
 const Arrow = () => <div className="text-faint text-center leading-none py-0.5">↓</div>;
-
-export function IskButton({ onClick }: { onClick: () => void }) {
-  return <Button size="sm" onClick={onClick}>View calculation</Button>;
-}

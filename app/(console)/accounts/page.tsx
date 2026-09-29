@@ -84,7 +84,7 @@ export default function AccountsPage() {
           </div>
         )}
       </Card>
-      {state && <NewAccountDialog open={creating} onClose={() => setCreating(false)} defaultWrapper={wrapper} />}
+      {state && creating && <NewAccountDialog open onClose={() => setCreating(false)} defaultWrapper={wrapper} />}
     </div>
   );
 }

@@ -11,16 +11,23 @@ import { ReportPreview } from "@/components/reports/ReportPreview";
 import { fmtDateTime } from "@/lib/dates";
 
 export default function ReportsPage() {
-  const { state, call, partner: globalPartner } = useShield();
+  const { state } = useShield();
+  const account = useSearchParams().get("account") ?? "";
+  if (!state) return null;
+  return <Reports key={account} />;
+}
+
+function Reports() {
+  const { state: maybeState, call, partner: globalPartner } = useShield();
+  const state = maybeState!;
   const params = useSearchParams();
   const initialAccount = params.get("account") ?? DEMO.pea;
-  const [partner, setPartner] = useState(state?.accounts.find((a) => a.id === initialAccount)?.partner_id ?? (globalPartner !== "all" ? globalPartner : DEMO.partners.lumen));
+  const [partner, setPartner] = useState(state.accounts.find((a) => a.id === initialAccount)?.partner_id ?? (globalPartner !== "all" ? globalPartner : DEMO.partners.lumen));
   const [account, setAccount] = useState(initialAccount);
   const [year, setYear] = useState(2026);
   const [report, setReport] = useState<ReportData | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  if (!state) return null;
   const accounts = state.accounts.filter((a) => a.partner_id === partner);
   const generate = async () => {
     setBusy(true);

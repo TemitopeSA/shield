@@ -57,7 +57,7 @@
       "kind": "issuer_concentration",
       "params": { "max_pct": 10 },
       "error_code": "CONCENTRATION_LIMIT_EXCEEDED",
-      "message": "Issuer concentration limit exceeded for {issuer}.",
+      "message": "Issuer concentration limit exceeded: {issuer}",
       "explain": "No more than 10% of a PIR may be invested in a single issuer (or its group)."
     },
     {

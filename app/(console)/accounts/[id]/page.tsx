@@ -4,13 +4,13 @@ import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { ArrowDownToLine, ArrowLeft, ArrowUpFromLine, Calculator, CandlestickChart, Check, Code2, FileText, X } from "lucide-react";
 import { useShield } from "@/lib/client/store";
-import { accountDetail } from "@/lib/client/selectors";
+import { accountDetail, bindingLimit } from "@/lib/client/selectors";
 import { evalPredicate } from "@/lib/engine/predicate";
 import { taxLots } from "@/lib/service";
 import type { AuditEvent, Predicate } from "@/lib/types";
 import { fmtMoney, fmtPct } from "@/lib/money";
 import { fmtDate, fmtTime, yearsBetween } from "@/lib/dates";
-import { Badge, Button, Card, CardHeader, CountUp, CountryChip, DemoNote, Drawer, EmptyState, JsonView, Progress, Skeleton, StatusBadge, Tabs, cx } from "@/components/ui";
+import { Badge, Button, Card, CardHeader, CountUp, CountryChip, DemoNote, Drawer, EmptyState, JsonView, Progress, Skeleton, StatusBadge, Tabs, cx, LinkButton } from "@/components/ui";
 import { TradeDialog, TransferDialog } from "@/components/accounts/ActionDialogs";
 import { IskCalculation } from "@/components/tax/IskCalculation";
 
@@ -27,7 +27,7 @@ export default function AccountPage() {
   const lots = useMemo(() => (state && d ? taxLots(state, id) : []), [state, d, id]);
 
   if (!state) return <div className="p-8"><Skeleton className="h-10 w-80 mb-6" /><Skeleton className="h-48" /></div>;
-  if (!d) return <EmptyState title="Account not found" body={`No account with id ${id} in this sandbox.`} action={<Link href="/accounts"><Button>Back to accounts</Button></Link>} />;
+  if (!d) return <EmptyState title="Account not found" body={`No account with id ${id} in this sandbox.`} action={<LinkButton href="/accounts">Back to accounts</LinkButton>} />;
 
   const { account, pack, client, partner, valuation: v, limits, positions, tax, compliance } = d;
   const cur = account.currency;
@@ -35,8 +35,9 @@ export default function AccountPage() {
   const holding = pack.plan.holding_period_years;
   const universe = pack.rules.filter((r) => r.kind === "instrument_predicate");
   const eligible = (sym: string) => universe.every((r) => evalPredicate(r.params.predicate as Predicate, d.instruments[sym] as unknown as Record<string, unknown>));
-  const lim = limits.lifetime ?? limits.annual;
-  const used = limits.lifetime !== null ? v.deposits_lifetime : v.deposits_year;
+  const binding = bindingLimit(limits, v);
+  const lim = binding?.limit ?? null;
+  const used = binding?.used ?? v.deposits_lifetime;
   const events = [...d.audit].reverse();
 
   return (
@@ -63,8 +64,8 @@ export default function AccountPage() {
         <div className="flex flex-wrap gap-2">
           <Button icon={<ArrowDownToLine className="size-3.5" />} onClick={() => setTransfer("INCOMING")} disabled={account.status !== "ACTIVE"}>Deposit</Button>
           <Button icon={<ArrowUpFromLine className="size-3.5" />} onClick={() => setTransfer("OUTGOING")} disabled={account.status !== "ACTIVE"}>Withdraw</Button>
-          <Link href={`/tax/reports?account=${account.id}`}><Button icon={<FileText className="size-3.5" />}>Report</Button></Link>
-          <Link href={`/developer/playground?account=${account.id}`}><Button variant="ghost" icon={<Code2 className="size-3.5" />}>API</Button></Link>
+          <LinkButton href={`/tax/reports?account=${account.id}`} icon={<FileText className="size-3.5" />}>Report</LinkButton>
+          <LinkButton href={`/developer/playground?account=${account.id}`} variant="ghost" icon={<Code2 className="size-3.5" />}>API</LinkButton>
           <Button variant="primary" icon={<CandlestickChart className="size-3.5" />} onClick={() => setTrade(true)} disabled={account.status !== "ACTIVE"}>Trade</Button>
         </div>
       </div>
@@ -81,7 +82,7 @@ export default function AccountPage() {
         <Card className="p-5">
           <div className="flex items-center justify-between">
             <span className="text-[12.5px] text-muted font-medium">Contribution used</span>
-            {lim !== null && <span className="text-[11.5px] text-muted">{limits.lifetime !== null ? "lifetime" : "this year"}</span>}
+            {binding && <span className="text-[11.5px] text-muted">{binding.period}</span>}
           </div>
           {lim === null ? (
             <>
@@ -92,7 +93,7 @@ export default function AccountPage() {
             <>
               <div className="text-[24px] font-semibold tracking-[-0.03em] mt-1"><CountUp value={used} format={(n) => m(n, 0)} /> <span className="text-[13px] text-muted font-normal">/ {m(lim, 0)}</span></div>
               <Progress value={used} max={lim} tone={used >= lim ? "warn" : "ink"} className="mt-3" />
-              <div className="text-[12px] mt-2"><span className="text-muted">Remaining </span><span className="font-medium tnum">{m(Math.max(0, lim - used), 0)}</span></div>
+              <div className="text-[12px] mt-2"><span className="text-muted">Remaining </span><span className="font-medium tnum">{m(Math.max(0, lim - used), 0)}</span>{binding?.other && <span className="text-muted"> · {m(Math.max(0, binding.other.limit - binding.other.used), 0)} left {binding.other.period}</span>}</div>
             </>
           )}
         </Card>

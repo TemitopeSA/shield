@@ -143,9 +143,13 @@ export function TransferDialog({ accountId, open, onClose, direction: initialDir
           <SuccessCard title={direction === "INCOMING" ? "Deposit accepted" : "Withdrawal completed"} subtitle={tax ? `Tax on the gain portion: ${fmtMoney(tax.tax, cur)}${tax.closes_plan ? " · the plan is now closed" : ""}` : fmtMoney(amount, cur)} />
         )}
         <div className="flex justify-end gap-2 pt-1">
-          <Button variant="primary" loading={!!r.busy} disabled={needsAck && !ack} onClick={() => submit()}>
-            {direction === "INCOMING" ? "Submit deposit" : "Submit withdrawal"}
-          </Button>
+          {r.settled && r.out?.ok ? (
+            <Button variant="primary" onClick={() => (onClose(), r.clear(), setAck(false))}>Done</Button>
+          ) : (
+            <Button variant="primary" loading={!!r.busy} disabled={needsAck && !ack} onClick={() => submit()}>
+              {direction === "INCOMING" ? "Submit deposit" : "Submit withdrawal"}
+            </Button>
+          )}
         </div>
       </div>
     </Modal>

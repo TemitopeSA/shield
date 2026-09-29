@@ -1,15 +1,17 @@
 "use client";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { RotateCcw } from "lucide-react";
 import { useShield } from "@/lib/client/store";
 import { sessionId } from "@/lib/client/api";
 import { Badge, Button, Card, CardHeader, PageHeader } from "@/components/ui";
 import { fmtDateTime } from "@/lib/dates";
 
+const noop = () => () => {};
+
 export default function SettingsPage() {
   const { state, reset, toast } = useShield();
   const [busy, setBusy] = useState(false);
-  const [sid] = useState(() => (typeof window === "undefined" ? "" : sessionId()));
+  const sid = useSyncExternalStore(noop, sessionId, () => "");
   return (
     <div className="px-4 sm:px-8 py-7 max-w-[900px] mx-auto space-y-4">
       <PageHeader title="Settings" description="Sandbox environment for the Shield prototype." />

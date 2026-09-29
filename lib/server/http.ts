@@ -5,6 +5,16 @@ import { ShieldError } from "../service";
 import { freshState, getSession, PUBLIC_SESSION, setSession } from "./store";
 
 export const SESSION_HEADER = "x-shield-session";
+export const VERSION_HEADER = "x-shield-version";
+
+/** A sandbox version: the reset epoch plus the monotonic mutation counter. */
+export const versionOf = (s: Pick<ShieldState, "seeded_at" | "seq">) => `${s.seeded_at}:${s.seq}`;
+
+/** True when `a` is at least as new as `b` (a later reset wins, then more mutations). */
+export function isNewerOrEqual(a: ShieldState, b: ShieldState) {
+  if (a.seeded_at !== b.seeded_at) return a.seeded_at > b.seeded_at;
+  return a.seq >= b.seq;
+}
 
 export class RestoreRequired extends Error {}
 
@@ -16,11 +26,15 @@ export function sessionId(req: NextRequest): string {
 export function loadState(req: NextRequest): { sid: string; state: ShieldState } {
   const sid = sessionId(req);
   let state = getSession(sid);
+  const expected = req.headers.get(VERSION_HEADER);
   if (!state) {
     // The browser holds a snapshot of its sandbox; ask it to re-hydrate this instance.
     if (sid !== PUBLIC_SESSION && req.headers.get(SESSION_HEADER)) throw new RestoreRequired();
     state = freshState();
     setSession(sid, state);
+  } else if (expected && sid !== PUBLIC_SESSION && versionOf(state) !== expected) {
+    // Serverless instances are independent: this one may hold an older copy.
+    throw new RestoreRequired();
   }
   return { sid, state };
 }
@@ -51,17 +65,39 @@ export function soften(req: NextRequest, res: Response): Response {
   return new Response(res.body, { status: 200, headers });
 }
 
+function withVersion(res: Response, state: ShieldState) {
+  res.headers.set(VERSION_HEADER, versionOf(state));
+  return res;
+}
+
+/**
+ * The console asks for the resulting sandbox with every call (x-shield-include-state),
+ * so the state it renders always comes from the instance that executed the command.
+ */
+function withState(req: NextRequest, body: unknown, state: ShieldState) {
+  if (!req.headers.get("x-shield-include-state") || !body || typeof body !== "object" || Array.isArray(body)) return body;
+  if (req.headers.get(VERSION_HEADER) === versionOf(state)) return body; // unchanged — nothing to sync
+  return { ...(body as object), _state: state };
+}
+
 /** Run a handler against the caller's sandbox with uniform timing + error envelopes. */
 export async function handle(req: NextRequest, fn: (state: ShieldState, body: unknown) => unknown | Promise<unknown>, status = 200) {
   const t0 = performance.now();
+  let loaded: ShieldState | undefined;
   try {
     const { state } = loadState(req);
+    loaded = state;
     const body = req.method === "GET" ? undefined : await req.json().catch((e) => { if (req.headers.get("content-length") === "0") return {}; throw e; });
     const result = await fn(state, body);
-    if (result instanceof Response) return result;
-    return NextResponse.json(result, { status, headers: { "x-shield-duration-ms": (performance.now() - t0).toFixed(2) } });
+    if (result instanceof Response) return withVersion(result, state);
+    return withVersion(NextResponse.json(withState(req, result, state), { status, headers: { "x-shield-duration-ms": (performance.now() - t0).toFixed(2) } }), state);
   } catch (e) {
-    const res = errorResponse(e);
+    let res: Response = errorResponse(e);
+    if (loaded) {
+      // Rejections are audited too, so the caller's copy must advance even on a 4xx.
+      const body = await res.json();
+      res = withVersion(NextResponse.json(withState(req, body, loaded), { status: res.status }), loaded);
+    }
     res.headers.set("x-shield-duration-ms", (performance.now() - t0).toFixed(2));
     return soften(req, res);
   }

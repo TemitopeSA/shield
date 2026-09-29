@@ -1,5 +1,6 @@
 "use client";
 import { clsx } from "clsx";
+import Link from "next/link";
 import { Check, Copy, Loader2, X } from "lucide-react";
 import {
   forwardRef,
@@ -25,6 +26,18 @@ const VARIANTS: Record<Variant, string> = {
   brand: "bg-brand text-ink hover:bg-brand-strong shadow-[inset_0_-1px_0_rgba(0,0,0,0.08)]",
 };
 const SIZES = { sm: "h-7 px-2.5 text-[12.5px] gap-1.5 rounded-md", md: "h-8.5 px-3.5 text-[13px] gap-2 rounded-lg", lg: "h-10.5 px-5 text-[14px] gap-2 rounded-lg" };
+const BASE =
+  "inline-flex items-center justify-center font-medium whitespace-nowrap transition-[background,border,color,box-shadow,transform] duration-150 active:translate-y-px disabled:opacity-50 disabled:pointer-events-none select-none";
+
+/** A navigation link styled as a button (never nest a <button> inside a link). */
+export function LinkButton({ href, variant = "secondary", size = "md", icon, className, children, onClick }: { href: string; variant?: Variant; size?: keyof typeof SIZES; icon?: ReactNode; className?: string; children?: ReactNode; onClick?: () => void }) {
+  return (
+    <Link href={href} onClick={onClick} className={cx(BASE, VARIANTS[variant], SIZES[size], className)}>
+      {icon}
+      {children}
+    </Link>
+  );
+}
 
 export const Button = forwardRef<
   HTMLButtonElement,
@@ -34,7 +47,7 @@ export const Button = forwardRef<
     <button
       ref={ref}
       className={cx(
-        "inline-flex items-center justify-center font-medium whitespace-nowrap transition-[background,border,color,box-shadow,transform] duration-150 active:translate-y-px disabled:opacity-50 disabled:pointer-events-none select-none",
+        BASE,
         VARIANTS[variant],
         SIZES[size],
         className,
