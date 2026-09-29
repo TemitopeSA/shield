@@ -1,0 +1,18 @@
+{
+  "wrapper": "CORE",
+  "name": "Core",
+  "full_name": "Core brokerage controls",
+  "description": "Rules applied to every wrapper account before any wrapper-specific rule pack runs.",
+  "rules": [
+    {
+      "id": "CORE_ACCOUNT_ACTIVE",
+      "name": "Account is an active {wrapper}",
+      "stages": ["pre_trade", "pre_transfer", "pre_withdrawal"],
+      "kind": "account_status",
+      "params": { "status": "ACTIVE" },
+      "error_code": "ACCOUNT_NOT_ACTIVE",
+      "message": "This {wrapper} account is {status} and cannot accept new activity.",
+      "explain": "Only active wrapper accounts can trade or move cash."
+    }
+  ]
+}

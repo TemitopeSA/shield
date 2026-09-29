@@ -1,0 +1,778 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Shield — EU Wrapper Engine API",
+    "version": "0.1.0",
+    "description": "Prototype API for jurisdiction-specific tax-wrapper accounts (PEA, ISK, PIR, …) on top of a brokerage. Every mutating call is evaluated by a configuration-driven rules engine and written to the audit log. Tax rules are simplified for demonstration and are not tax advice. Not an official Alpaca product."
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "This deployment"
+    }
+  ],
+  "components": {
+    "parameters": {
+      "Session": {
+        "name": "x-shield-session",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string"
+        },
+        "description": "Sandbox id. Omit to use the shared public sandbox."
+      }
+    },
+    "schemas": {
+      "RuleResult": {
+        "type": "object",
+        "properties": {
+          "rule_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "outcome": {
+            "enum": [
+              "PASS",
+              "FAIL",
+              "WARN",
+              "SKIP"
+            ]
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "explain": {
+            "type": "string"
+          },
+          "details": {
+            "type": "object"
+          },
+          "duration_ms": {
+            "type": "number"
+          }
+        }
+      },
+      "Evaluation": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "stage": {
+            "enum": [
+              "account_opening",
+              "pre_trade",
+              "pre_transfer",
+              "pre_withdrawal",
+              "compliance"
+            ]
+          },
+          "wrapper": {
+            "type": "string"
+          },
+          "allowed": {
+            "type": "boolean"
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RuleResult"
+            }
+          },
+          "failed": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/RuleResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "duration_ms": {
+            "type": "number"
+          }
+        }
+      },
+      "RuleRejection": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "INSTRUMENT_NOT_ELIGIBLE"
+          },
+          "message": {
+            "type": "string"
+          },
+          "rule_id": {
+            "type": "string",
+            "example": "PEA_ELIGIBLE_UNIVERSE"
+          },
+          "explain": {
+            "type": "string"
+          },
+          "details": {
+            "type": "object"
+          },
+          "evaluation": {
+            "$ref": "#/components/schemas/Evaluation"
+          }
+        }
+      },
+      "Account": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "wrapper_type": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "ACTIVE",
+              "CLOSED"
+            ]
+          },
+          "currency": {
+            "type": "string"
+          },
+          "partner_id": {
+            "type": "string"
+          },
+          "client_id": {
+            "type": "string"
+          },
+          "tax_residency": {
+            "type": "string"
+          },
+          "opened_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "cash": {
+            "type": "number"
+          },
+          "portfolio_value": {
+            "type": "number"
+          },
+          "contribution_headroom": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "plan_age_years": {
+            "type": "number"
+          }
+        }
+      },
+      "CreateAccount": {
+        "type": "object",
+        "required": [
+          "wrapper_type"
+        ],
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "client_name": {
+            "type": "string"
+          },
+          "partner_id": {
+            "type": "string"
+          },
+          "wrapper_type": {
+            "type": "string",
+            "example": "PEA"
+          },
+          "tax_residency": {
+            "type": "string",
+            "example": "FR"
+          },
+          "birth_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "initial_deposit": {
+            "type": "number"
+          }
+        }
+      },
+      "Transfer": {
+        "type": "object",
+        "required": [
+          "direction",
+          "amount"
+        ],
+        "properties": {
+          "direction": {
+            "enum": [
+              "INCOMING",
+              "OUTGOING"
+            ]
+          },
+          "amount": {
+            "type": "number"
+          },
+          "acknowledge_early_exit": {
+            "type": "boolean"
+          }
+        }
+      },
+      "Order": {
+        "type": "object",
+        "required": [
+          "symbol",
+          "qty",
+          "side"
+        ],
+        "properties": {
+          "symbol": {
+            "type": "string"
+          },
+          "qty": {
+            "type": "integer"
+          },
+          "side": {
+            "enum": [
+              "buy",
+              "sell"
+            ]
+          },
+          "type": {
+            "enum": [
+              "market"
+            ]
+          }
+        }
+      },
+      "Simulate": {
+        "type": "object",
+        "required": [
+          "action"
+        ],
+        "properties": {
+          "action": {
+            "enum": [
+              "open_account",
+              "order",
+              "deposit",
+              "withdrawal"
+            ]
+          },
+          "account_id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "assumed_return": {
+            "type": "number"
+          },
+          "symbol": {
+            "type": "string"
+          },
+          "qty": {
+            "type": "integer"
+          },
+          "side": {
+            "enum": [
+              "buy",
+              "sell"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/v1/accounts": {
+      "get": {
+        "summary": "List wrapper accounts",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Session"
+          },
+          {
+            "name": "wrapper_type",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "partner_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Accounts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Account"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a wrapper account",
+        "description": "Runs the `account_opening` stage of the wrapper's rule pack (residency, one-per-client, contribution limit).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAccount"
+              },
+              "example": {
+                "client_id": "client_001",
+                "wrapper_type": "PEA",
+                "tax_residency": "FR"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "account": {
+                      "$ref": "#/components/schemas/Account"
+                    },
+                    "evaluation": {
+                      "$ref": "#/components/schemas/Evaluation"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Rejected by the rules engine",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleRejection"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/accounts/{id}": {
+      "get": {
+        "summary": "Get an account",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "PEA-20417"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/v1/accounts/{id}/transfers": {
+      "get": {
+        "summary": "List transfers",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "PEA-20417"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Transfers"
+          }
+        }
+      },
+      "post": {
+        "summary": "Deposit or withdraw",
+        "description": "INCOMING runs `pre_transfer` (contribution limits); OUTGOING runs `pre_withdrawal` (cash, holding period) and computes withdrawal tax.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "PEA-20417"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Transfer"
+              },
+              "example": {
+                "direction": "INCOMING",
+                "amount": 10000
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Accepted"
+          },
+          "422": {
+            "description": "Rejected by the rules engine",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleRejection"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/trading/accounts/{id}/orders": {
+      "get": {
+        "summary": "List orders",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "PEA-20417"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Orders"
+          }
+        }
+      },
+      "post": {
+        "summary": "Submit an order",
+        "description": "Runs `pre_trade`: account status, residency, instrument eligibility, issuer concentration, available cash. Accepted orders receive a mock fill.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "PEA-20417"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Order"
+              },
+              "example": {
+                "symbol": "AAPL",
+                "qty": 10,
+                "side": "buy",
+                "type": "market"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Filled"
+          },
+          "422": {
+            "description": "Rejected by the rules engine",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleRejection"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/accounts/{id}/wrapper": {
+      "get": {
+        "summary": "Wrapper status",
+        "description": "Headroom, holding period, compliance checks and estimated tax.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "PEA-20417"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Wrapper summary"
+          }
+        }
+      }
+    },
+    "/v1/accounts/{id}/tax_lots": {
+      "get": {
+        "summary": "Tax lots",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "PEA-20417"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Open tax lots"
+          }
+        }
+      }
+    },
+    "/v1/accounts/{id}/tax": {
+      "get": {
+        "summary": "Tax working",
+        "description": "Transparent calculation from the pack's tax model (e.g. ISK quarterly capital base).",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "PEA-20417"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tax estimate with detail"
+          }
+        }
+      }
+    },
+    "/v1/accounts/{id}/reports/{year}": {
+      "get": {
+        "summary": "Annual report",
+        "description": "IFU / KU / PIR-style statement. `?format=csv` returns CSV. Report generation is audited.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "PEA-20417"
+          },
+          {
+            "name": "year",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "example": 2026
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "schema": {
+              "enum": [
+                "json",
+                "csv"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Report"
+          }
+        }
+      }
+    },
+    "/v1/wrappers": {
+      "get": {
+        "summary": "List rule packs",
+        "responses": {
+          "200": {
+            "description": "Packs and activation status"
+          }
+        }
+      },
+      "post": {
+        "summary": "Activate a wrapper",
+        "description": "Submit a JSON rule pack. It is validated against the engine's supported evaluators and tax models, then activated.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "pack": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Activated"
+          },
+          "400": {
+            "description": "Invalid rule pack"
+          }
+        }
+      }
+    },
+    "/v1/wrappers/validate": {
+      "post": {
+        "summary": "Validate a rule pack",
+        "responses": {
+          "200": {
+            "description": "Validation result"
+          }
+        }
+      }
+    },
+    "/v1/wrappers/simulate": {
+      "post": {
+        "summary": "Dry run",
+        "description": "Evaluates an action against a disposable copy of state. Never modifies state or the audit log.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Simulate"
+              },
+              "example": {
+                "action": "withdrawal",
+                "account_id": "PEA-20417",
+                "amount": 20000,
+                "date": "2031-01-15",
+                "assumed_return": 0.05
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Evaluation and tax projection"
+          }
+        }
+      }
+    },
+    "/v1/audit": {
+      "get": {
+        "summary": "Audit log",
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Events, newest first"
+          }
+        }
+      }
+    },
+    "/v1/instruments": {
+      "get": {
+        "summary": "Instrument reference data",
+        "responses": {
+          "200": {
+            "description": "Instruments"
+          }
+        }
+      }
+    }
+  }
+}

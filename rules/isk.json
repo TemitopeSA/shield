@@ -1,0 +1,55 @@
+{
+  "wrapper": "ISK",
+  "name": "ISK",
+  "full_name": "Investeringssparkonto",
+  "country": "SE",
+  "country_name": "Sweden",
+  "currency": "SEK",
+  "version": "2026.1.0",
+  "summary": "Sweden's investment savings account. No tax on gains or dividends — instead a small annual tax on the account's average value.",
+  "highlights": ["No contribution cap", "Annual capital-based tax"],
+  "plan": {},
+  "rules": [
+    {
+      "id": "ISK_RESIDENCY",
+      "name": "Client is a Swedish tax resident",
+      "stages": ["account_opening", "pre_trade", "pre_transfer"],
+      "kind": "client_predicate",
+      "params": { "predicate": { "field": "tax_residency", "op": "in", "value": ["SE"] } },
+      "error_code": "RESIDENCY_NOT_ELIGIBLE",
+      "message": "An ISK can only be opened for a Swedish tax resident. Client residency: {tax_residency}.",
+      "explain": "The ISK regime applies to individuals who are tax resident in Sweden (simplified)."
+    },
+    {
+      "id": "ISK_ELIGIBLE_UNIVERSE",
+      "name": "Instrument is admitted to a regulated market",
+      "stages": ["pre_trade"],
+      "kind": "instrument_predicate",
+      "params": { "side": "buy", "predicate": { "field": "listed", "op": "eq", "value": true } },
+      "error_code": "INSTRUMENT_NOT_ELIGIBLE",
+      "message": "{symbol} isn't admitted to trading on a regulated market or MTF.",
+      "explain": "An ISK can hold any listed security, fund or cash — including non-Swedish shares."
+    },
+    {
+      "id": "ISK_CASH_AVAILABLE",
+      "name": "Sufficient cash in the account",
+      "stages": ["pre_trade", "pre_withdrawal"],
+      "kind": "cash_available",
+      "params": {},
+      "error_code": "INSUFFICIENT_CASH",
+      "message": "Not enough cash in the account. Required {required}, available {available}.",
+      "explain": "Purchases and withdrawals must be covered by cash held inside the wrapper."
+    }
+  ],
+  "tax": {
+    "model": "capital_base_tax",
+    "params": {
+      "year": 2026,
+      "snapshot_dates": ["01-01", "04-01", "07-01", "10-01"],
+      "tax_free_base": 300000,
+      "standard_rate": 0.0355,
+      "tax_rate": 0.30
+    }
+  },
+  "reporting": { "format": "KU", "name": "KU-style annual statement", "reference": "Kontrolluppgift — investeringssparkonto (KU30)" }
+}

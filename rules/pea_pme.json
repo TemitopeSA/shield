@@ -1,0 +1,31 @@
+{
+  "wrapper": "PEA_PME",
+  "name": "PEA-PME",
+  "full_name": "PEA for small & mid-sized companies",
+  "country": "FR",
+  "country_name": "France",
+  "currency": "EUR",
+  "version": "2026.1.0",
+  "summary": "A sister plan to the PEA focused on European SMEs and mid-caps, with a higher combined ceiling.",
+  "highlights": ["€225k combined limit", "EU SMEs & mid-caps only"],
+  "plan": { "holding_period_years": 5 },
+  "rules": [
+    { "id": "PEA_PME_RESIDENCY", "name": "Client is a French tax resident", "stages": ["account_opening", "pre_trade", "pre_transfer"], "kind": "client_predicate", "params": { "predicate": { "field": "tax_residency", "op": "in", "value": ["FR"] } }, "error_code": "RESIDENCY_NOT_ELIGIBLE", "message": "A PEA-PME can only be held by a French tax resident.", "explain": "Only French tax residents can open or fund a PEA-PME." },
+    { "id": "PEA_PME_ONE_PER_CLIENT", "name": "One PEA-PME per taxpayer", "stages": ["account_opening"], "kind": "max_accounts_per_client", "params": { "max": 1 }, "error_code": "DUPLICATE_WRAPPER_ACCOUNT", "message": "This client already holds a PEA-PME ({existing}).", "explain": "Each taxpayer may hold a single PEA-PME." },
+    { "id": "PEA_PME_CONTRIBUTION_LIMIT", "name": "Lifetime contribution limit", "stages": ["account_opening", "pre_transfer"], "kind": "contribution_limit", "params": { "period": "lifetime", "limit": 225000 }, "error_code": "CONTRIBUTION_LIMIT_EXCEEDED", "message": "This deposit exceeds the PEA-PME contribution limit.", "explain": "Payments are capped at €225,000 (combined with the PEA in the real regime; simplified here)." },
+    { "id": "PEA_PME_ELIGIBLE_UNIVERSE", "name": "Instrument is an eligible EU SME", "stages": ["pre_trade"], "kind": "instrument_predicate", "params": { "side": "buy", "predicate": { "all": [ { "field": "tags", "op": "has", "value": "eu_sme" }, { "field": "country", "op": "in", "value": ["AT","BE","BG","HR","CY","CZ","DK","EE","FI","FR","DE","GR","HU","IE","IT","LV","LT","LU","MT","NL","PL","PT","RO","SK","SI","ES","SE","IS","LI","NO"] } ] } }, "error_code": "INSTRUMENT_NOT_ELIGIBLE", "message": "{symbol} isn't an eligible SME or mid-cap.", "explain": "PEA-PME only accepts EU/EEA companies below the SME / mid-cap thresholds." },
+    { "id": "PEA_PME_CASH_AVAILABLE", "name": "Sufficient cash in the plan", "stages": ["pre_trade", "pre_withdrawal"], "kind": "cash_available", "params": {}, "error_code": "INSUFFICIENT_CASH", "message": "Not enough cash in the plan. Required {required}, available {available}.", "explain": "Purchases and withdrawals must be covered by cash held inside the wrapper." },
+    { "id": "PEA_PME_HOLDING_PERIOD", "name": "5-year holding period", "stages": ["pre_withdrawal"], "kind": "holding_period", "params": { "years": 5, "early_exit": "close_plan" }, "error_code": "EARLY_WITHDRAWAL_CLOSES_PLAN", "message": "The plan is {plan_age} years old. A withdrawal before year 5 closes the PEA-PME.", "explain": "Withdrawing before the 5th anniversary closes the plan." }
+  ],
+  "tax": {
+    "model": "gain_tax_schedule",
+    "params": {
+      "basis": "pro_rata_gain",
+      "schedule": [
+        { "label": "Before 5 years", "when": { "field": "plan_age_years", "op": "lt", "value": 5 }, "rate": 0.314, "closes_plan": true, "note": "Full rate on the gain portion; the plan closes." },
+        { "label": "After 5 years", "rate": 0.186, "closes_plan": false, "note": "Social charges only on the gain portion." }
+      ]
+    }
+  },
+  "reporting": { "format": "IFU", "name": "IFU-style annual summary", "reference": "Imprimé Fiscal Unique (form 2561)" }
+}

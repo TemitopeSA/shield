@@ -1,0 +1,115 @@
+{
+  "wrapper": "PIR",
+  "name": "PIR",
+  "full_name": "Piano Individuale di Risparmio",
+  "country": "IT",
+  "country_name": "Italy",
+  "currency": "EUR",
+  "version": "2026.1.0",
+  "summary": "Italy's individual savings plan. Invest mainly in Italian companies and, after 5 years, gains are tax-free.",
+  "highlights": ["€40k/year · €200k lifetime", "10% issuer concentration limit"],
+  "plan": { "holding_period_years": 5 },
+  "rules": [
+    {
+      "id": "PIR_RESIDENCY",
+      "name": "Client is an Italian tax resident",
+      "stages": ["account_opening", "pre_trade", "pre_transfer"],
+      "kind": "client_predicate",
+      "params": { "predicate": { "field": "tax_residency", "op": "in", "value": ["IT"] } },
+      "error_code": "RESIDENCY_NOT_ELIGIBLE",
+      "message": "A PIR can only be held by an Italian tax resident. Client residency: {tax_residency}.",
+      "explain": "PIR benefits are reserved for individuals resident in Italy."
+    },
+    {
+      "id": "PIR_ONE_PER_CLIENT",
+      "name": "One PIR per holder",
+      "stages": ["account_opening"],
+      "kind": "max_accounts_per_client",
+      "params": { "max": 1 },
+      "error_code": "DUPLICATE_WRAPPER_ACCOUNT",
+      "message": "This client already holds a PIR ({existing}).",
+      "explain": "Each investor may hold a single ordinary PIR."
+    },
+    {
+      "id": "PIR_ANNUAL_LIMIT",
+      "name": "Annual contribution limit",
+      "stages": ["account_opening", "pre_transfer"],
+      "kind": "contribution_limit",
+      "params": { "period": "annual", "limit": 40000 },
+      "error_code": "CONTRIBUTION_LIMIT_EXCEEDED",
+      "message": "This deposit exceeds the PIR annual contribution limit.",
+      "explain": "Contributions to a PIR are capped at €40,000 per calendar year."
+    },
+    {
+      "id": "PIR_LIFETIME_LIMIT",
+      "name": "Lifetime contribution limit",
+      "stages": ["account_opening", "pre_transfer"],
+      "kind": "contribution_limit",
+      "params": { "period": "lifetime", "limit": 200000 },
+      "error_code": "CONTRIBUTION_LIMIT_EXCEEDED",
+      "message": "This deposit exceeds the PIR lifetime contribution limit.",
+      "explain": "Total PIR contributions are capped at €200,000."
+    },
+    {
+      "id": "PIR_ISSUER_CONCENTRATION",
+      "name": "Single-issuer concentration ≤ 10%",
+      "stages": ["pre_trade"],
+      "kind": "issuer_concentration",
+      "params": { "max_pct": 10 },
+      "error_code": "CONCENTRATION_LIMIT_EXCEEDED",
+      "message": "Issuer concentration limit exceeded for {issuer}.",
+      "explain": "No more than 10% of a PIR may be invested in a single issuer (or its group)."
+    },
+    {
+      "id": "PIR_CASH_AVAILABLE",
+      "name": "Sufficient cash in the plan",
+      "stages": ["pre_trade", "pre_withdrawal"],
+      "kind": "cash_available",
+      "params": {},
+      "error_code": "INSUFFICIENT_CASH",
+      "message": "Not enough cash in the plan. Required {required}, available {available}.",
+      "explain": "Purchases and withdrawals must be covered by cash held inside the wrapper."
+    },
+    {
+      "id": "PIR_ITALIAN_ALLOCATION",
+      "name": "≥ 70% in Italian companies",
+      "stages": ["compliance"],
+      "kind": "allocation_ratio",
+      "params": { "min_pct": 70, "predicate": { "field": "country", "op": "eq", "value": "IT" } },
+      "error_code": "ALLOCATION_BELOW_MINIMUM",
+      "message": "Only {actual_pct}% is invested in Italian companies (minimum {min_pct}%).",
+      "explain": "At least 70% of the plan must be invested in companies resident in Italy."
+    },
+    {
+      "id": "PIR_NON_MIB_ALLOCATION",
+      "name": "≥ 17.5% outside the FTSE MIB",
+      "stages": ["compliance"],
+      "kind": "allocation_ratio",
+      "params": { "min_pct": 17.5, "predicate": { "all": [ { "field": "country", "op": "eq", "value": "IT" }, { "field": "index", "op": "neq", "value": "FTSE_MIB" } ] } },
+      "error_code": "ALLOCATION_BELOW_MINIMUM",
+      "message": "Only {actual_pct}% is invested in Italian companies outside the FTSE MIB (minimum {min_pct}%).",
+      "explain": "25% of the qualifying 70% (17.5% of the plan) must be outside the FTSE MIB."
+    },
+    {
+      "id": "PIR_HOLDING_PERIOD",
+      "name": "5-year holding period",
+      "stages": ["pre_withdrawal"],
+      "kind": "holding_period",
+      "params": { "years": 5, "early_exit": "tax_due" },
+      "error_code": "HOLDING_PERIOD_NOT_MET",
+      "message": "The plan is {plan_age} years old. Gains withdrawn before year 5 lose the exemption.",
+      "explain": "Investments must be held for 5 years for gains to be exempt."
+    }
+  ],
+  "tax": {
+    "model": "gain_tax_schedule",
+    "params": {
+      "basis": "pro_rata_gain",
+      "schedule": [
+        { "label": "Before 5 years", "when": { "field": "plan_age_years", "op": "lt", "value": 5 }, "rate": 0.26, "closes_plan": false, "note": "Requirements not met: 26% ordinary capital-gains tax on the gain portion." },
+        { "label": "After 5 years", "rate": 0, "closes_plan": false, "note": "Requirements met: gains are exempt." }
+      ]
+    }
+  },
+  "reporting": { "format": "PIR_ANNUAL", "name": "PIR annual tax statement", "reference": "Rendiconto annuale PIR" }
+}

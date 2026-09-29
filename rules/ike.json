@@ -1,0 +1,31 @@
+{
+  "wrapper": "IKE",
+  "name": "IKE",
+  "full_name": "Indywidualne Konto Emerytalne",
+  "country": "PL",
+  "country_name": "Poland",
+  "currency": "PLN",
+  "version": "2026.1.0",
+  "summary": "Poland's individual retirement account. Withdrawals after age 60 are free of the 19% capital gains tax.",
+  "highlights": ["PLN 28,260 annual limit", "Tax-free from age 60"],
+  "plan": {},
+  "rules": [
+    { "id": "IKE_RESIDENCY", "name": "Client is a Polish tax resident", "stages": ["account_opening", "pre_trade", "pre_transfer"], "kind": "client_predicate", "params": { "predicate": { "field": "tax_residency", "op": "in", "value": ["PL"] } }, "error_code": "RESIDENCY_NOT_ELIGIBLE", "message": "An IKE can only be held by a Polish tax resident. Client residency: {tax_residency}.", "explain": "IKE is available to individuals resident in Poland (simplified)." },
+    { "id": "IKE_MIN_AGE", "name": "Client is at least 16", "stages": ["account_opening"], "kind": "client_predicate", "params": { "predicate": { "field": "age", "op": "gte", "value": 16 } }, "error_code": "CLIENT_TOO_YOUNG", "message": "The client must be at least 16 to open an IKE.", "explain": "IKE accounts may be opened from age 16." },
+    { "id": "IKE_ONE_PER_CLIENT", "name": "One IKE per person", "stages": ["account_opening"], "kind": "max_accounts_per_client", "params": { "max": 1 }, "error_code": "DUPLICATE_WRAPPER_ACCOUNT", "message": "This client already holds an IKE ({existing}).", "explain": "Each person may hold one IKE." },
+    { "id": "IKE_ANNUAL_LIMIT", "name": "Annual contribution limit", "stages": ["account_opening", "pre_transfer"], "kind": "contribution_limit", "params": { "period": "annual", "limit": 28260 }, "error_code": "CONTRIBUTION_LIMIT_EXCEEDED", "message": "This deposit exceeds the IKE annual contribution limit.", "explain": "Contributions are capped each year at 3× the projected average monthly salary (PLN 28,260 in this demo)." },
+    { "id": "IKE_ELIGIBLE_UNIVERSE", "name": "Instrument is listed", "stages": ["pre_trade"], "kind": "instrument_predicate", "params": { "side": "buy", "predicate": { "field": "listed", "op": "eq", "value": true } }, "error_code": "INSTRUMENT_NOT_ELIGIBLE", "message": "{symbol} isn't eligible for an IKE brokerage account.", "explain": "A brokerage IKE can hold listed shares, ETFs and bonds." },
+    { "id": "IKE_CASH_AVAILABLE", "name": "Sufficient cash in the account", "stages": ["pre_trade", "pre_withdrawal"], "kind": "cash_available", "params": {}, "error_code": "INSUFFICIENT_CASH", "message": "Not enough cash in the account. Required {required}, available {available}.", "explain": "Purchases and withdrawals must be covered by cash held inside the wrapper." }
+  ],
+  "tax": {
+    "model": "gain_tax_schedule",
+    "params": {
+      "basis": "pro_rata_gain",
+      "schedule": [
+        { "label": "Age 60+", "when": { "field": "client_age", "op": "gte", "value": 60 }, "rate": 0, "closes_plan": false, "note": "Withdrawals from age 60 are free of capital-gains tax." },
+        { "label": "Before 60", "rate": 0.19, "closes_plan": true, "note": "Early withdrawal: 19% capital-gains tax on the gain and the account is closed." }
+      ]
+    }
+  },
+  "reporting": { "format": "IKE_ANNUAL", "name": "IKE annual information", "reference": "Informacja roczna IKE" }
+}
